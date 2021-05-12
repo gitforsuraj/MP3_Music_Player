@@ -88,19 +88,19 @@ void play_next_isr(void) {
 void setting_button_isr(void) {
   fprintf(stderr, "i am in setting button isr\n");
   xSemaphoreGiveFromISR(setting_button_pressed, NULL);
-  LPC_GPIOINT->IO0IntClr = (1 << 26);
-}
-
-void setting_control_up_isr(void) {
-  fprintf(stderr, "I am in vol up function ISR\n");
-  xSemaphoreGiveFromISR(setting_control_up_pressed, NULL);
-  LPC_GPIOINT->IO0IntClr = (1 << 6);
+  LPC_GPIOINT->IO0IntClr = (1 << 16);
 }
 
 void setting_control_down_isr(void) {
   fprintf(stderr, "I am in vol down function ISR\n");
   xSemaphoreGiveFromISR(setting_control_down_pressed, NULL);
-  LPC_GPIOINT->IO0IntClr = (1 << 1);
+  LPC_GPIOINT->IO0IntClr = (1 << 10);
+}
+
+void setting_control_up_isr(void) {
+  fprintf(stderr, "I am in vol up function ISR\n");
+  xSemaphoreGiveFromISR(setting_control_up_pressed, NULL);
+  LPC_GPIOINT->IO0IntClr = (1 << 11);
 }
 
 void mp3_play_previous(void *p) {
@@ -143,11 +143,9 @@ void pause_function(void) {
       if (pause) {
         fprintf(stderr, "I am in pause function \n");
         vTaskSuspend(player_handle);
-        // vTaskDelay(300);
         pause = false;
       } else {
         vTaskResume(player_handle);
-        // vTaskDelay(300);
         pause = true;
       }
     } else {
@@ -302,11 +300,14 @@ void setting_control_up() {
       if (setting_counter == 0) // enum struct {Volume, bass, treble}
       {
         volume_up();
+        vTaskDelay(100);
       } else if (setting_counter == 1) {
         bass_up();
+        vTaskDelay(100);
         fprintf(stderr, "bass up.\n");
       } else {
         // treble_up();
+        vTaskDelay(100);
         fprintf(stderr, "treble up.\n");
       }
     }
@@ -319,11 +320,14 @@ void setting_control_down() {
       if (setting_counter == 0) // enum struct {Volume, bass, treble}
       {
         volume_down();
+        vTaskDelay(100);
       } else if (setting_counter == 1) {
         bass_down();
+        vTaskDelay(100);
         fprintf(stderr, "bass down.\n");
       } else {
         // treble_down();
+        vTaskDelay(100);
         fprintf(stderr, "treble down.\n");
       }
     }
@@ -340,10 +344,10 @@ void volume_up() {
     fprintf(stderr, "Increasing volume\n");
     volume_counter++;
   }
-  uart_write(0xFE);
-  uart_write(0xD4);
-  lcd_write_string("V: ");
-  fprintf(stderr, " vol counter %c\n", volume_counter + '0');
+  // uart_write(0xFE);
+  // uart_write(0xD4);
+  // lcd_write_string("V: ");
+  // fprintf(stderr, " vol counter %c\n", volume_counter + '0');
 }
 
 void volume_down() {
@@ -356,11 +360,11 @@ void volume_down() {
     fprintf(stderr, "Lowering volume.\n");
     volume_counter--;
   }
-  uart_write(0xFE);
-  uart_write(0xD4);
-  lcd_write_string("V: ");
-  fprintf(stderr, " vol counter %c\n", volume_counter + '0');
-  lcd_write_string(volume_counter + '0');
+  // uart_write(0xFE);
+  // uart_write(0xD4);
+  // lcd_write_string("V: ");
+  // fprintf(stderr, " vol counter %c\n", volume_counter + '0');
+  // lcd_write_string(volume_counter + '0');
 }
 
 void bass_up() {
@@ -429,9 +433,9 @@ void main(void) {
   button.pause = gpio__construct_as_input(0, 25); // PAUSE Function
   button.previous = gpio__construct_as_input(0, 1);
   button.next = gpio__construct_as_input(0, 0); // NEXT Function
-  // button.setting = gpio__construct_as_input(0, 26);
-  // button.volume_up = gpio__construct_as_input(0, 6);
-  // button.volume_down = gpio__construct_as_input(0, 1);
+  button.setting = gpio__construct_as_input(0, 16);
+  button.setting_control_down = gpio__construct_as_input(0, 10);
+  button.setting_control_up = gpio__construct_as_input(0, 11);
 
   mp3_startup();
 
@@ -441,9 +445,9 @@ void main(void) {
   gpio0__attach_interrupt(25, GPIO_INTR__RISING_EDGE, pause_button_isr);
   gpio0__attach_interrupt(1, GPIO_INTR__RISING_EDGE, play_previous_isr);
   gpio0__attach_interrupt(0, GPIO_INTR__RISING_EDGE, play_next_isr);
-  // gpio0__attach_interrupt(26, GPIO_INTR__RISING_EDGE, setting_button_isr);
-  // gpio0__attach_interrupt(6, GPIO_INTR__RISING_EDGE, volume_up_button_isr);
-  // gpio0__attach_interrupt(1, GPIO_INTR__RISING_EDGE, volume_down_button_isr);
+  gpio0__attach_interrupt(16, GPIO_INTR__RISING_EDGE, setting_button_isr);
+  gpio0__attach_interrupt(10, GPIO_INTR__RISING_EDGE, setting_control_down_isr);
+  gpio0__attach_interrupt(11, GPIO_INTR__RISING_EDGE, setting_control_up_isr);
 
   song_list__populate();
 
