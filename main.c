@@ -23,6 +23,9 @@ QueueHandle_t Q_songname;
 QueueHandle_t Q_songdata;
 QueueHandle_t Q_songlist;
 
+// QueueHandle_t setting_control_up_pressed; // new
+// QueueHandle_t setting_control_down_pressed; // new
+
 TaskHandle_t player_handle;
 
 SemaphoreHandle_t select_button_pressed;
@@ -33,6 +36,7 @@ SemaphoreHandle_t next_button_pressed;
 SemaphoreHandle_t setting_button_pressed;
 SemaphoreHandle_t setting_control_up_pressed;
 SemaphoreHandle_t setting_control_down_pressed;
+SemaphoreHandle_t menu_button_pressed;
 
 typedef struct mp3_functions {
   gpio_s select;
@@ -43,6 +47,7 @@ typedef struct mp3_functions {
   gpio_s setting;
   gpio_s setting_control_up;
   gpio_s setting_control_down;
+  gpio_s menu;
 } mp3_buttons;
 
 static mp3_buttons button;
@@ -94,13 +99,21 @@ void setting_button_isr(void) {
 void setting_control_down_isr(void) {
   fprintf(stderr, "I am in vol down function ISR\n");
   xSemaphoreGiveFromISR(setting_control_down_pressed, NULL);
-  LPC_GPIOINT->IO0IntClr = (1 << 10);
+  // LPC_GPIOINT->IO2IntClr = (1 << 5);
+  LPC_GPIOINT->IO0IntClr = (1 << 29);
 }
 
 void setting_control_up_isr(void) {
   fprintf(stderr, "I am in vol up function ISR\n");
   xSemaphoreGiveFromISR(setting_control_up_pressed, NULL);
-  LPC_GPIOINT->IO0IntClr = (1 << 11);
+  // LPC_GPIOINT->IO2IntClr = (1 << 6);
+  LPC_GPIOINT->IO0IntClr = (1 << 30);
+}
+
+void menu_button_isr(void) {
+  fprintf(stderr, "I am in menu ISR\n");
+  xSemaphoreGiveFromISR(menu_button_pressed, NULL);
+  LPC_GPIOINT->IO0IntClr = (1 << 22);
 }
 
 void mp3_play_previous(void *p) {
@@ -275,38 +288,35 @@ void mp3_player_task(void *p) {
         mp3_ssp_write(songdata[i]);
       }
     }
+    // printf("buffer transmit time %d\n", counter);
+    // counter++;
   }
 }
 
-uint8_t max_volume = 0x00;
-uint8_t min_volume = 0xFA;
-uint16_t current_volume = 0x10;
-
-uint8_t max_treble = 0x07;
-uint8_t min_treble = -0x05;
+uint16_t current_volume = 0x20;
 uint8_t current_treble = 0x01;
-
-uint8_t max_bass = 0x03;
-uint8_t min_bass = 0x0F;
 uint8_t current_bass = 0x09;
-
-uint8_t volume_counter = 5;
+uint8_t volume_counter = 3; // 1 to 5
 uint8_t bass_counter = 3;   // 1 to 5
 uint8_t treble_counter = 3; // 1 to 5
 
-void setting_control_up() {
+void setting_control_up(void) {
   while (1) {
     if (xSemaphoreTake(setting_control_up_pressed, portMAX_DELAY)) {
-      if (setting_counter == 0) // enum struct {Volume, bass, treble}
-      {
+      fprintf(stderr, "VOLUME UP.\n");
+      if (setting_counter == 0) {
+        vTaskDelay(100);
         volume_up();
         vTaskDelay(100);
+        fprintf(stderr, "volume up.\n");
       } else if (setting_counter == 1) {
+        vTaskDelay(100);
         bass_up();
         vTaskDelay(100);
         fprintf(stderr, "bass up.\n");
       } else {
-        // treble_up();
+        vTaskDelay(100);
+        treble_up();
         vTaskDelay(100);
         fprintf(stderr, "treble up.\n");
       }
@@ -314,19 +324,22 @@ void setting_control_up() {
   }
 }
 
-void setting_control_down() {
+void setting_control_down(void) {
   while (1) {
     if (xSemaphoreTake(setting_control_down_pressed, portMAX_DELAY)) {
-      if (setting_counter == 0) // enum struct {Volume, bass, treble}
-      {
+      fprintf(stderr, "VOLUME DOWN.\n");
+      if (setting_counter == 0) {
+        vTaskDelay(100);
         volume_down();
         vTaskDelay(100);
       } else if (setting_counter == 1) {
+        vTaskDelay(100);
         bass_down();
         vTaskDelay(100);
         fprintf(stderr, "bass down.\n");
       } else {
-        // treble_down();
+        vTaskDelay(100);
+        treble_down();
         vTaskDelay(100);
         fprintf(stderr, "treble down.\n");
       }
@@ -334,91 +347,94 @@ void setting_control_down() {
   }
 }
 
-void volume_up() {
-  fprintf(stderr, "In vol up sem.\n");
-  if (current_volume <= max_volume) {
-    fprintf(stderr, "Volume max.\n");
+void volume_up(void) {
+  if (volume_counter == 5) {
+    fprintf(stderr, "bass max count.\n");
+    ;
   } else {
     current_volume = current_volume - 0x10;
     sci_write_reg(0x0B, current_volume, current_volume);
-    fprintf(stderr, "Increasing volume\n");
     volume_counter++;
   }
-  // uart_write(0xFE);
-  // uart_write(0xD4);
-  // lcd_write_string("V: ");
-  // fprintf(stderr, " vol counter %c\n", volume_counter + '0');
+  volume_up_print(volume_counter);
 }
 
-void volume_down() {
-  fprintf(stderr, "In vol down sem.\n");
-  if (current_volume >= min_volume) {
-    fprintf(stderr, "Volume min.\n");
+void volume_down(void) {
+  if (volume_counter == 0) {
+    fprintf(stderr, "bass min count.\n");
+    ;
   } else {
     current_volume = current_volume + 0x10;
     sci_write_reg(SCI_VOL_ADDR, current_volume, current_volume);
-    fprintf(stderr, "Lowering volume.\n");
     volume_counter--;
   }
-  // uart_write(0xFE);
-  // uart_write(0xD4);
-  // lcd_write_string("V: ");
-  // fprintf(stderr, " vol counter %c\n", volume_counter + '0');
-  // lcd_write_string(volume_counter + '0');
+  volume_down_print(volume_counter);
 }
 
-void bass_up() {
+void bass_up(void) {
   if (bass_counter == 5) {
     fprintf(stderr, "bass max count.\n");
     ;
   } else {
-    current_bass = current_bass - 0x30;
+    current_bass = current_bass - 0x03;
     uint16_t original_bass = sci_read_reg(SCI_BASS_ADDR);
-    sci_write_reg(SCI_BASS_ADDR, (original_bass >> 8), current_bass);
+    // sci_write_reg(SCI_BASS_ADDR, (original_bass >> 8), current_bass);
     bass_counter++;
   }
+  bass_up_print(bass_counter);
 }
 
-void bass_down() {
+void bass_down(void) {
   if (bass_counter == 1) {
     fprintf(stderr, "bass min count.\n");
     ;
   } else {
-    current_bass = current_bass + 0x30;
+    current_bass = current_bass + 0x03;
     uint16_t original_bass = sci_read_reg(SCI_BASS_ADDR);
-    sci_write_reg(SCI_BASS_ADDR, (original_bass >> 8), current_bass);
+    // sci_write_reg(SCI_BASS_ADDR, (original_bass >> 8), current_bass);
     bass_counter--;
   }
+  bass_down_print(bass_counter);
 }
 
-void treble_up() {
-  if (current_treble >= max_treble) {
-    ;
-  } else if (current_treble == 5) {
+void treble_up(void) {
+  if (treble_counter == 5) {
+    fprintf(stderr, "bass max count.\n");
     ;
   } else {
-    current_treble = current_treble - 0x30;
+    current_treble = current_treble - 0x03;
     uint16_t original_treble = sci_read_reg(SCI_BASS_ADDR);
-    sci_write_reg(SCI_BASS_ADDR, current_treble, (original_treble & 0xFF));
+    // sci_write_reg(SCI_BASS_ADDR, current_treble, (original_treble & 0xFF));
     treble_counter++;
   }
+  treble_up_print(treble_counter);
 }
 
-void treble_down() {
-  if (current_treble == min_treble) {
-    ;
-  } else if (current_treble == 1) {
+void treble_down(void) {
+  if (treble_counter == 1) {
+    fprintf(stderr, "bass min count.\n");
     ;
   } else {
-    current_treble = current_treble + 0x30;
+    current_treble = current_treble + 0x03;
     uint16_t original_treble = sci_read_reg(SCI_BASS_ADDR);
-    sci_write_reg(SCI_BASS_ADDR, current_treble, (original_treble & 0xFF));
+    // sci_write_reg(SCI_BASS_ADDR, current_treble, (original_treble & 0xFF));
     treble_counter--;
+  }
+  treble_down_print(treble_counter);
+}
+
+void mp3_menu(void) {
+  while (1) {
+    if (xSemaphoreTake(menu_button_pressed, portMAX_DELAY)) {
+      lcd_clear_display();
+      lcd_set_cursor_to_line();
+      lcd_show_all_songs();
+      fprintf(stderr, "Entered menu\n");
+    }
   }
 }
 
 void main(void) {
-
   select_button_pressed = xSemaphoreCreateBinary();
   cursor_button_pressed = xSemaphoreCreateBinary();
   pause_button_pressed = xSemaphoreCreateBinary();
@@ -427,6 +443,7 @@ void main(void) {
   setting_button_pressed = xSemaphoreCreateBinary();
   setting_control_up_pressed = xSemaphoreCreateBinary();
   setting_control_down_pressed = xSemaphoreCreateBinary();
+  menu_button_pressed = xSemaphoreCreateBinary();
 
   button.select = gpio__construct_as_input(0, 6);
   button.cursor = gpio__construct_as_input(0, 26);
@@ -434,20 +451,25 @@ void main(void) {
   button.previous = gpio__construct_as_input(0, 1);
   button.next = gpio__construct_as_input(0, 0); // NEXT Function
   button.setting = gpio__construct_as_input(0, 16);
-  button.setting_control_down = gpio__construct_as_input(0, 10);
-  button.setting_control_up = gpio__construct_as_input(0, 11);
+  button.setting_control_down = gpio__construct_as_input(0, 29);
+  button.setting_control_up = gpio__construct_as_input(0, 30);
+  button.menu = gpio__construct_as_input(0, 22);
 
   mp3_startup();
 
   lpc_peripheral__enable_interrupt(LPC_PERIPHERAL__GPIO, gpio0__interrupt_dispatcher, "name");
+  // lpc_peripheral__enable_interrupt(LPC_PERIPHERAL__GPIO, gpio2__interrupt_dispatcher, "name2");
   gpio0__attach_interrupt(6, GPIO_INTR__RISING_EDGE, select_button_isr);
   gpio0__attach_interrupt(26, GPIO_INTR__RISING_EDGE, cursor_button_isr);
   gpio0__attach_interrupt(25, GPIO_INTR__RISING_EDGE, pause_button_isr);
   gpio0__attach_interrupt(1, GPIO_INTR__RISING_EDGE, play_previous_isr);
   gpio0__attach_interrupt(0, GPIO_INTR__RISING_EDGE, play_next_isr);
   gpio0__attach_interrupt(16, GPIO_INTR__RISING_EDGE, setting_button_isr);
-  gpio0__attach_interrupt(10, GPIO_INTR__RISING_EDGE, setting_control_down_isr);
-  gpio0__attach_interrupt(11, GPIO_INTR__RISING_EDGE, setting_control_up_isr);
+  // gpio2__attach_interrupt(5, GPIO_INTR__RISING_EDGE, setting_control_down_isr);
+  // gpio2__attach_interrupt(6, GPIO_INTR__RISING_EDGE, setting_control_up_isr);
+  gpio0__attach_interrupt(29, GPIO_INTR__RISING_EDGE, setting_control_down_isr);
+  gpio0__attach_interrupt(30, GPIO_INTR__RISING_EDGE, setting_control_up_isr);
+  gpio0__attach_interrupt(22, GPIO_INTR__RISING_EDGE, menu_button_isr);
 
   song_list__populate();
 
@@ -472,11 +494,7 @@ void main(void) {
   xTaskCreate(settings_control, "settings", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
   xTaskCreate(setting_control_up, "settings up", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
   xTaskCreate(setting_control_down, "settings down", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-
-  // xTaskCreate(volume_up, "volume up", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  // xTaskCreate(volume_down, "volume down", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  // xTaskCreate(bass_up, "volume up", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  // xTaskCreate(bass_down, "volume down", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(mp3_menu, "menu", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
 
   sj2_cli__init();
   vTaskStartScheduler();
