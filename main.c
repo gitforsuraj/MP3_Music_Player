@@ -186,21 +186,7 @@ void menu_cursor(void) {
 void play_song(void) {
   while (1) {
     if (xSemaphoreTake(select_button_pressed, portMAX_DELAY)) {
-      fprintf(stderr, "I am in play song \n");
       xQueueSend(Q_songname, song_list__get_name_for_item(list_of_songs_index), 0);
-    }
-  }
-}
-
-void settings_control(void) {
-  while (1) {
-    if (xSemaphoreTake(setting_button_pressed, portMAX_DELAY)) {
-      if (setting_counter < 2) {
-        setting_counter++;
-      } else {
-        setting_counter = 0;
-      }
-      fprintf(stderr, "setting counter: %i\n", setting_counter);
     }
   }
 }
@@ -293,31 +279,37 @@ void mp3_player_task(void *p) {
   }
 }
 
-uint16_t current_volume = 0x20;
+uint16_t current_volume = 0x10;
 uint8_t current_treble = 0x01;
 uint8_t current_bass = 0x09;
-uint8_t volume_counter = 3; // 1 to 5
+uint8_t volume_counter = 4; // 1 to 5
 uint8_t bass_counter = 3;   // 1 to 5
 uint8_t treble_counter = 3; // 1 to 5
+
+void settings_control(void) {
+  while (1) {
+    if (xSemaphoreTake(setting_button_pressed, portMAX_DELAY)) {
+      if (setting_counter < 2) {
+        setting_counter++;
+      } else {
+        setting_counter = 0;
+      }
+      fprintf(stderr, "setting counter: %i\n", setting_counter);
+    }
+  }
+}
 
 void setting_control_up(void) {
   while (1) {
     if (xSemaphoreTake(setting_control_up_pressed, portMAX_DELAY)) {
-      fprintf(stderr, "VOLUME UP.\n");
       if (setting_counter == 0) {
-        vTaskDelay(100);
         volume_up();
-        vTaskDelay(100);
         fprintf(stderr, "volume up.\n");
       } else if (setting_counter == 1) {
-        vTaskDelay(100);
         bass_up();
-        vTaskDelay(100);
         fprintf(stderr, "bass up.\n");
       } else {
-        vTaskDelay(100);
         treble_up();
-        vTaskDelay(100);
         fprintf(stderr, "treble up.\n");
       }
     }
@@ -327,20 +319,14 @@ void setting_control_up(void) {
 void setting_control_down(void) {
   while (1) {
     if (xSemaphoreTake(setting_control_down_pressed, portMAX_DELAY)) {
-      fprintf(stderr, "VOLUME DOWN.\n");
       if (setting_counter == 0) {
-        vTaskDelay(100);
         volume_down();
-        vTaskDelay(100);
+        fprintf(stderr, "volume down.\n");
       } else if (setting_counter == 1) {
-        vTaskDelay(100);
         bass_down();
-        vTaskDelay(100);
         fprintf(stderr, "bass down.\n");
       } else {
-        vTaskDelay(100);
         treble_down();
-        vTaskDelay(100);
         fprintf(stderr, "treble down.\n");
       }
     }
@@ -350,7 +336,7 @@ void setting_control_down(void) {
 void volume_up(void) {
   if (volume_counter == 5) {
     fprintf(stderr, "bass max count.\n");
-    ;
+
   } else {
     current_volume = current_volume - 0x10;
     sci_write_reg(0x0B, current_volume, current_volume);
@@ -362,7 +348,7 @@ void volume_up(void) {
 void volume_down(void) {
   if (volume_counter == 0) {
     fprintf(stderr, "bass min count.\n");
-    ;
+
   } else {
     current_volume = current_volume + 0x10;
     sci_write_reg(SCI_VOL_ADDR, current_volume, current_volume);
@@ -374,7 +360,7 @@ void volume_down(void) {
 void bass_up(void) {
   if (bass_counter == 5) {
     fprintf(stderr, "bass max count.\n");
-    ;
+
   } else {
     current_bass = current_bass - 0x03;
     uint16_t original_bass = sci_read_reg(SCI_BASS_ADDR);
@@ -387,7 +373,7 @@ void bass_up(void) {
 void bass_down(void) {
   if (bass_counter == 1) {
     fprintf(stderr, "bass min count.\n");
-    ;
+
   } else {
     current_bass = current_bass + 0x03;
     uint16_t original_bass = sci_read_reg(SCI_BASS_ADDR);
@@ -400,7 +386,7 @@ void bass_down(void) {
 void treble_up(void) {
   if (treble_counter == 5) {
     fprintf(stderr, "bass max count.\n");
-    ;
+
   } else {
     current_treble = current_treble - 0x03;
     uint16_t original_treble = sci_read_reg(SCI_BASS_ADDR);
@@ -413,7 +399,7 @@ void treble_up(void) {
 void treble_down(void) {
   if (treble_counter == 1) {
     fprintf(stderr, "bass min count.\n");
-    ;
+
   } else {
     current_treble = current_treble + 0x03;
     uint16_t original_treble = sci_read_reg(SCI_BASS_ADDR);
@@ -484,17 +470,17 @@ void main(void) {
   xTaskCreate(mp3_reader_task, "read task", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
   xTaskCreate(mp3_player_task, "play task", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, &player_handle);
 
-  xTaskCreate(menu_cursor, "menu cursor", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  xTaskCreate(play_song, "play song", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  xTaskCreate(pause_function, "pause", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(menu_cursor, "menu cursor", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(play_song, "play song", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(pause_function, "pause", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
 
-  xTaskCreate(mp3_play_previous, "play previous", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  xTaskCreate(mp3_play_next, "play next", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(mp3_play_previous, "play previous", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(mp3_play_next, "play next", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
 
-  xTaskCreate(settings_control, "settings", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  xTaskCreate(setting_control_up, "settings up", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  xTaskCreate(setting_control_down, "settings down", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  xTaskCreate(mp3_menu, "menu", (512U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(settings_control, "settings", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(setting_control_up, "settings up", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(setting_control_down, "settings down", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
+  // xTaskCreate(mp3_menu, "menu", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
 
   sj2_cli__init();
   vTaskStartScheduler();
