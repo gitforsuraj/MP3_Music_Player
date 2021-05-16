@@ -477,7 +477,6 @@ void main(void) {
   xTaskCreate(settings_control, "settings", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
   xTaskCreate(setting_control_up, "settings up", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
   xTaskCreate(setting_control_down, "settings down", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
-  // xTaskCreate(mp3_menu, "menu", (128U * 4) / sizeof(void *), NULL, PRIORITY_MEDIUM, NULL);
 
   sj2_cli__init();
   vTaskStartScheduler();
