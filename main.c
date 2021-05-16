@@ -364,7 +364,7 @@ void bass_up(void) {
   } else {
     current_bass = current_bass - 0x03;
     uint16_t original_bass = sci_read_reg(SCI_BASS_ADDR);
-    // sci_write_reg(SCI_BASS_ADDR, (original_bass >> 8), current_bass);
+    sci_write_reg(SCI_BASS_ADDR, (original_bass >> 8), current_bass);
     bass_counter++;
   }
   bass_up_print(bass_counter);
@@ -377,7 +377,7 @@ void bass_down(void) {
   } else {
     current_bass = current_bass + 0x03;
     uint16_t original_bass = sci_read_reg(SCI_BASS_ADDR);
-    // sci_write_reg(SCI_BASS_ADDR, (original_bass >> 8), current_bass);
+    sci_write_reg(SCI_BASS_ADDR, (original_bass >> 8), current_bass);
     bass_counter--;
   }
   bass_down_print(bass_counter);
@@ -390,7 +390,7 @@ void treble_up(void) {
   } else {
     current_treble = current_treble - 0x03;
     uint16_t original_treble = sci_read_reg(SCI_BASS_ADDR);
-    // sci_write_reg(SCI_BASS_ADDR, current_treble, (original_treble & 0xFF));
+    sci_write_reg(SCI_BASS_ADDR, current_treble, (original_treble & 0xFF));
     treble_counter++;
   }
   treble_up_print(treble_counter);
@@ -403,7 +403,7 @@ void treble_down(void) {
   } else {
     current_treble = current_treble + 0x03;
     uint16_t original_treble = sci_read_reg(SCI_BASS_ADDR);
-    // sci_write_reg(SCI_BASS_ADDR, current_treble, (original_treble & 0xFF));
+    sci_write_reg(SCI_BASS_ADDR, current_treble, (original_treble & 0xFF));
     treble_counter--;
   }
   treble_down_print(treble_counter);
@@ -444,15 +444,12 @@ void main(void) {
   mp3_startup();
 
   lpc_peripheral__enable_interrupt(LPC_PERIPHERAL__GPIO, gpio0__interrupt_dispatcher, "name");
-  // lpc_peripheral__enable_interrupt(LPC_PERIPHERAL__GPIO, gpio2__interrupt_dispatcher, "name2");
   gpio0__attach_interrupt(6, GPIO_INTR__RISING_EDGE, select_button_isr);
   gpio0__attach_interrupt(26, GPIO_INTR__RISING_EDGE, cursor_button_isr);
   gpio0__attach_interrupt(25, GPIO_INTR__RISING_EDGE, pause_button_isr);
   gpio0__attach_interrupt(1, GPIO_INTR__RISING_EDGE, play_previous_isr);
   gpio0__attach_interrupt(0, GPIO_INTR__RISING_EDGE, play_next_isr);
   gpio0__attach_interrupt(16, GPIO_INTR__RISING_EDGE, setting_button_isr);
-  // gpio2__attach_interrupt(5, GPIO_INTR__RISING_EDGE, setting_control_down_isr);
-  // gpio2__attach_interrupt(6, GPIO_INTR__RISING_EDGE, setting_control_up_isr);
   gpio0__attach_interrupt(29, GPIO_INTR__RISING_EDGE, setting_control_down_isr);
   gpio0__attach_interrupt(30, GPIO_INTR__RISING_EDGE, setting_control_up_isr);
   gpio0__attach_interrupt(22, GPIO_INTR__RISING_EDGE, menu_button_isr);
