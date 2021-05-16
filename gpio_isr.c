@@ -7,32 +7,6 @@
 #include "task.h"
 #include <stdio.h>
 
-// static function_pointer_t gpio0_callbacks[32];
-
-// void gpio0__attach_interrupt(uint32_t pin, gpio_interrupt_e interrupt_type, function_pointer_t callback) {
-//   gpio0__set_as_input(pin);
-//   NVIC_EnableIRQ(GPIO_IRQn);
-
-//   if (interrupt_type == GPIO_INTR__FALLING_EDGE) {
-//     LPC_GPIOINT->IO0IntEnF |= (1 << pin);
-//   } else if (interrupt_type == GPIO_INTR__RISING_EDGE) {
-//     LPC_GPIOINT->IO0IntEnR |= (1 << pin);
-//   }
-//   gpio0_callbacks[pin] = callback;
-// }
-
-// void gpio0__interrupt_dispatcher(void) {
-//   int pin_that_generated_interrupt = 0;
-//   for (int index = 0; index < sizeof(gpio0_callbacks) / sizeof(int); index++) {
-//     if (LPC_GPIOINT->IO0IntStatR & (1 << index) || LPC_GPIOINT->IO0IntStatF & (1 << index)) {
-//       pin_that_generated_interrupt = index;
-//     }
-//   }
-//   function_pointer_t attached_user_handler = gpio0_callbacks[pin_that_generated_interrupt];
-//   attached_user_handler();
-//   LPC_GPIOINT->IO0IntClr = (1 << pin_that_generated_interrupt);
-// }
-
 // Note: You may want another separate array for falling vs. rising edge callbacks
 
 static function_pointer_t gpio0_callbacks[32];
